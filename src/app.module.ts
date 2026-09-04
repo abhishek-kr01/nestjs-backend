@@ -7,6 +7,8 @@ import { ConfigModule } from '@nestjs/config';
 import { PostsModule } from './posts/posts.module';
 import Joi, * as joi from 'joi';
 import appConfig from './config/app.config';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Post } from './posts/entities/post.entity';
 
 @Module({
   imports: [
@@ -19,7 +21,17 @@ import appConfig from './config/app.config';
     }),
     HelloModule,
     UserModule,
-    PostsModule
+    PostsModule,
+    TypeOrmModule.forRoot({
+      type: 'postgres',
+      host: 'localhost',
+      port: 5432,
+      username: 'postgres',
+      password: 'postgres123',
+      database: 'nestjs-backend',
+      entities: [Post], // array of entites that we want to register
+      synchronize: true, // dev mode
+    })
   ],
   controllers: [AppController],
   providers: [AppService],
