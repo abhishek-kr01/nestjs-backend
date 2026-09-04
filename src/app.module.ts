@@ -4,8 +4,9 @@ import { AppService } from './app.service';
 import { HelloModule } from './hello/hello.module';
 import { UserModule } from './user/user.module';
 import { ConfigModule } from '@nestjs/config';
+import { PostsModule } from './posts/posts.module';
 import Joi, * as joi from 'joi';
-import appConfig from '../config/app.config';
+import appConfig from './config/app.config';
 
 @Module({
   imports: [
@@ -17,7 +18,8 @@ import appConfig from '../config/app.config';
       load: [appConfig],
     }),
     HelloModule,
-    UserModule
+    UserModule,
+    PostsModule
   ],
   controllers: [AppController],
   providers: [AppService],
