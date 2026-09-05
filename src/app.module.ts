@@ -9,6 +9,8 @@ import Joi, * as joi from 'joi';
 import appConfig from './config/app.config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Post } from './posts/entities/post.entity';
+import { AuthModule } from './auth/auth.module';
+import { User } from './auth/entities/user.entity';
 
 @Module({
   imports: [
@@ -27,11 +29,12 @@ import { Post } from './posts/entities/post.entity';
       host: 'localhost',
       port: 5432,
       username: 'postgres',
-      password: 'postgres123',
+      password: 'postgres123',//keep it in env
       database: 'nestjs-backend',
-      entities: [Post], // array of entites that we want to register
+      entities: [Post, User], // array of entites that we want to register
       synchronize: true, // dev mode
-    })
+    }),
+    AuthModule
   ],
   controllers: [AppController],
   providers: [AppService],
