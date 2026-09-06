@@ -1,246 +1,349 @@
 # NestJS Backend
 
-A hands-on NestJS backend codebase built to practice and demonstrate core backend concepts, architecture patterns, and commonly used NestJS features through practical implementations.
+A hands-on NestJS backend project built incrementally to explore and implement common NestJS and backend concepts in one codebase.
 
-The project starts with a simple REST API and progressively adds validation, database integration, authentication, authorization, rate limiting, caching, pagination, file uploads, events, interceptors, and middleware.
+The project covers REST APIs, validation, PostgreSQL with TypeORM, JWT authentication, role-based authorization, rate limiting, caching, pagination and filtering, file uploads with Cloudinary, events and listeners, interceptors, and middleware.
 
----
-
-## 📌 What This Project Covers
+## What is implemented
 
 ### NestJS Fundamentals
-- Project structure and modular architecture
+
+The project uses NestJS modules to organize related functionality and follows the basic Controller → Service structure.
+
+Implemented examples include:
+
 - Modules
 - Controllers
 - Services
 - Dependency Injection
-- Environment configuration
-
-### REST API Development
-- RESTful API design
-- CRUD operations
-- DTOs
-- Pipes
-- Request validation
-- Pagination
-- Filtering
-
-### Database
-- PostgreSQL
-- TypeORM
-- Entities
-- Repository-based data access
-- Entity relationships
-- Automatic timestamps
-
-### Authentication & Authorization
-- JWT authentication
-- Password hashing with bcrypt
-- Passport
-- JWT Strategy
-- Authentication Guards
-- Role-Based Access Control (RBAC)
-
-### API Security & Performance
-- Rate limiting with NestJS Throttler
-- In-memory caching
-- Request/response logging
-- Interceptors
-- Middleware
-
-### File Handling
-- Multipart file uploads
-- Multer through `@nestjs/platform-express`
-- Cloudinary integration
-- Stream-based uploads with `streamifier`
-- File deletion from Cloudinary
-
-### Event-Driven Architecture
-- EventEmitter
-- Event publishing
-- Event listeners
-- Decoupling application actions using events
+- Shared/common functionality
+- Application bootstrap configuration
 
 ---
 
-## 🛠️ Tech Stack
+## REST APIs
 
-| Technology | Purpose |
-|---|---|
-| **NestJS 12** | Backend framework |
-| **TypeScript** | Application language |
-| **PostgreSQL** | Relational database |
-| **TypeORM** | ORM and database access |
-| **JWT** | Authentication |
-| **Passport / Passport JWT** | Authentication strategy |
-| **bcrypt** | Password hashing |
-| **class-validator** | DTO validation |
-| **class-transformer** | Data transformation |
-| **@nestjs/config** | Environment configuration |
-| **@nestjs/throttler** | Rate limiting |
-| **@nestjs/cache-manager** | Application caching |
-| **Cloudinary** | File/media storage |
-| **Multer** | Multipart file handling |
-| **streamifier** | Buffer-to-stream conversion |
-| **@nestjs/event-emitter** | Event-driven communication |
+The project contains simple example modules as well as a database-backed `posts` API.
 
----
-
-## 🧩 Features Implemented
-
-### 1. Modules, Controllers & Services
-The project follows NestJS's modular architecture by separating application responsibilities into modules, controllers, and services.
-
-This provides a clean structure where:
-- Controllers handle incoming requests.
-- Services contain application/business logic.
-- Modules organize related functionality.
-
-### 2. Environment Configuration
-Environment-specific configuration is handled using `@nestjs/config`.
-
-Sensitive and environment-specific values such as database credentials, JWT configuration, and Cloudinary configuration can be supplied through environment variables instead of hardcoding them in the source code.
-
-Example:
-
-```env
-PORT=3000
-
-DB_HOST=localhost
-DB_PORT=5432
-DB_USERNAME=postgres
-DB_PASSWORD=your_password
-DB_DATABASE=nestjs-backend
-
-JWT_SECRET=your_jwt_secret
-
-CLOUDINARY_CLOUD_NAME=your_cloud_name
-CLOUDINARY_API_KEY=your_api_key
-CLOUDINARY_API_SECRET=your_api_secret
-```
-
-> Do not commit `.env` files or real credentials to Git.
-
----
-
-### 3. RESTful CRUD APIs
-The `posts` module demonstrates CRUD operations using REST endpoints and TypeORM.
-
-Typical operations include:
+### Hello endpoints
 
 ```text
-POST   /posts
+GET /hello
+GET /hello/user/:name
+GET /hello/query?name=Abhishek
+```
+
+### User example endpoints
+
+```text
+GET /user
+GET /user/:id
+GET /user/:id/welcome
+```
+
+These modules are simple examples used to demonstrate controllers, services, parameters, query parameters, and service-to-service dependency injection.
+
+---
+
+## Posts API
+
+The `posts` module provides CRUD operations backed by PostgreSQL and TypeORM.
+
+```text
 GET    /posts
 GET    /posts/:id
-PATCH  /posts/:id
+POST   /posts
+PUT    /posts/:id
 DELETE /posts/:id
 ```
 
-The implementation evolved from in-memory CRUD to PostgreSQL-backed persistence.
+### Validation
 
----
-
-### 4. DTOs, Pipes & Validation
-Request payloads are handled through DTOs and validated using `class-validator` and `class-transformer`.
-
-This helps keep validation logic separate from controllers and makes request contracts explicit.
+Post requests use DTOs with `class-validator`.
 
 Examples of validation include:
+
 - Required fields
-- String length constraints
-- Data type validation
+- String validation
+- Minimum and maximum length
+- Integer validation for pagination parameters
 - Query parameter validation
 
+Global validation is configured with:
+
+```ts
+ValidationPipe({
+  whitelist: true,
+  forbidNonWhitelisted: true,
+  transform: true,
+})
+```
+
+### Post ownership
+
+Authenticated users can create posts.
+
+When updating a post, the service checks whether the current user owns the post or has the `ADMIN` role.
+
+Deleting posts is restricted to users with the `ADMIN` role.
+
 ---
 
-### 5. PostgreSQL + TypeORM
-The project uses PostgreSQL as the primary database and TypeORM for database access.
+## PostgreSQL + TypeORM
 
-The implementation includes:
-- Entity definitions
-- TypeORM configuration
-- Repository-based operations
-- Entity relationships
-- Automatic `createdDate` / `updatedDate` timestamps
+The application uses PostgreSQL with TypeORM.
+
+The current implementation includes:
+
+- TypeORM entities
+- Repository-based database operations
+- `User` and `Post` entities
+- User/Post relationship
+- File entity and uploader relationship
+- Automatically managed creation/update timestamps
 - Development-time schema synchronization
 
-> `synchronize: true` is intended for development/learning use and should be used carefully in production environments.
+The main entities are:
+
+```text
+User
+ └── has many Posts
+
+Post
+ └── belongs to User
+
+File
+ └── belongs to User
+```
+
+> The application currently uses `synchronize: true` in the TypeORM configuration, which is suitable for development/learning but should be handled differently for production database schema management.
 
 ---
 
-### 6. JWT Authentication
-Authentication is implemented using JWT, Passport, and bcrypt.
+## Authentication
 
-The authentication flow includes:
+Authentication is implemented using:
+
+- JWT
+- Passport
+- Passport JWT
+- bcrypt
+
+### Registration
 
 ```text
-User credentials
-      ↓
-Password verification
-      ↓
-JWT generation
-      ↓
-Client sends JWT
-      ↓
+POST /auth/register
+```
+
+During registration:
+
+1. The email is checked for an existing account.
+2. The password is hashed with bcrypt.
+3. A user is created with the `USER` role.
+4. A `user.registered` event is emitted.
+5. The stored password is excluded from the returned user object.
+
+### Login
+
+```text
+POST /auth/login
+```
+
+The login flow:
+
+```text
+Email + Password
+       ↓
+Find user
+       ↓
+Compare password with bcrypt
+       ↓
+Generate access + refresh tokens
+       ↓
+Return user + tokens
+```
+
+### Refresh token
+
+```text
+POST /auth/refresh
+```
+
+The refresh token is verified and a new access token is generated.
+
+### Current profile
+
+```text
+GET /auth/profile
+```
+
+This route is protected by the JWT authentication guard and returns the authenticated user.
+
+---
+
+## JWT Strategy and Authentication Guard
+
+The project uses a custom JWT strategy with Passport.
+
+```text
+Request
+  ↓
+Authorization: Bearer <token>
+  ↓
+JwtAuthGuard
+  ↓
 JWT Strategy
-      ↓
-Authentication Guard
-      ↓
-Protected route
+  ↓
+Load user
+  ↓
+Authenticated request
 ```
 
-Passwords are hashed with bcrypt rather than stored as plain text.
+The authenticated user is then available through the `@CurrentUser()` custom decorator.
 
 ---
 
-### 7. Role-Based Access Control (RBAC)
-Authorization is separated from authentication using roles and guards.
+## Role-Based Access Control (RBAC)
 
-Conceptually:
+Two roles are defined:
 
 ```text
-Authentication
-    ↓
-"Who are you?"
-
-Authorization
-    ↓
-"What are you allowed to do?"
+USER
+ADMIN
 ```
 
-RBAC allows protected resources to be restricted based on a user's role.
+The project uses:
+
+- `@Roles(...)` decorator
+- `RolesGuard`
+- `JwtAuthGuard`
+
+The authorization flow is:
+
+```text
+Request
+  ↓
+JWT Authentication
+  ↓
+Current User
+  ↓
+RolesGuard
+  ↓
+Check required role
+  ↓
+Allow / Forbidden
+```
+
+Example protected admin route:
+
+```text
+POST /auth/create-admin
+DELETE /posts/:id
+```
+
+The `ADMIN` role is required for these operations.
 
 ---
 
-### 8. Rate Limiting
-Rate limiting is implemented using `@nestjs/throttler`.
+## Rate Limiting
 
-This helps reduce excessive requests to protected endpoints and demonstrates how request throttling can be integrated into a NestJS application.
+Login requests are protected with a custom throttler guard.
+
+The project uses:
+
+```text
+@nestjs/throttler
+```
+
+The custom `LoginThrottlerGuard` tracks login attempts using the email from the request body.
+
+Current configuration:
+
+```text
+5 attempts
+within 60 seconds
+```
+
+When the limit is exceeded, the application returns a throttling exception with a message asking the client to try again later.
+
+The guard is applied to:
+
+```text
+POST /auth/login
+```
+
+### Dependency note
 
 The project currently uses:
 
 ```text
-@nestjs/throttler 6.5.0
+@nestjs/throttler@6.5.0
 ```
 
-> Because the current throttler package has a peer-dependency range that does not include NestJS 12, dependency installation may require `--legacy-peer-deps` with the current setup.
+with NestJS 12. Because this throttler version does not declare NestJS 12 in its peer dependency range, dependency installation may require:
+
+```bash
+npm install --legacy-peer-deps
+```
 
 ---
 
-### 9. Caching
-In-memory caching is implemented using:
+## Caching
+
+The `posts` service uses `@nestjs/cache-manager` with the in-memory cache store.
+
+Caching is implemented for:
 
 ```text
-@nestjs/cache-manager
-cache-manager
+GET /posts
+GET /posts/:id
 ```
 
-Caching can reduce repeated work for frequently requested data and demonstrates where a cache layer can be introduced in a NestJS application.
+### Single post cache
+
+A post uses a cache key similar to:
+
+```text
+post_1
+```
+
+The service first checks the cache before querying PostgreSQL.
+
+```text
+Request
+  ↓
+Check cache
+  ├── Hit  → return cached post
+  └── Miss → query database
+              ↓
+            store in cache
+              ↓
+            return post
+```
+
+### Posts list cache
+
+List responses are cached using a key based on:
+
+- Page
+- Limit
+- Title filter
+
+Example:
+
+```text
+posts_list_page1_limit10_titleall
+```
+
+When a post is created, updated, or deleted, the related list caches are invalidated.
+
+Individual post caches are also removed when a post is updated or deleted.
 
 ---
 
-### 10. Pagination & Filtering
-The posts API includes query-based pagination and filtering.
+## Pagination and Filtering
+
+The posts listing endpoint supports pagination and title filtering.
 
 Example:
 
@@ -248,333 +351,424 @@ Example:
 GET /posts?page=1&limit=10
 ```
 
-Filtering can be extended through query DTOs without mixing query parsing and business logic directly into the controller.
+Title filtering:
+
+```text
+GET /posts?title=nestjs
+```
+
+Both can be combined:
+
+```text
+GET /posts?page=1&limit=10&title=nestjs
+```
+
+The response follows a paginated structure:
+
+```json
+{
+  "items": [],
+  "meta": {
+    "currentPage": 1,
+    "itemsPerPage": 10,
+    "totalItems": 0,
+    "totalPages": 0,
+    "hasPreviousPage": false,
+    "hasNextPage": false
+  }
+}
+```
+
+Pagination and filter query parameters are validated through DTOs.
 
 ---
 
-### 11. File Uploads with Cloudinary
-The file-upload module demonstrates a multipart upload flow using Multer and Cloudinary.
+## File Uploads
 
-Flow:
+The project includes a file upload module using:
+
+- Multer through `@nestjs/platform-express`
+- Memory storage
+- Cloudinary
+- `streamifier`
+- PostgreSQL / TypeORM for file metadata
+
+### Upload flow
 
 ```text
 Client
   ↓
-Multipart/Form-Data
+multipart/form-data
   ↓
-Multer
+FileInterceptor
   ↓
-File Buffer
+Multer memory storage
+  ↓
+File buffer
   ↓
 streamifier
   ↓
-Cloudinary Upload Stream
+Cloudinary upload stream
   ↓
-Cloudinary URL / Resource
+Cloudinary URL + public ID
+  ↓
+Save file metadata in PostgreSQL
 ```
 
-The implementation also includes Cloudinary resource deletion.
+### Endpoints
 
----
-
-### 12. Events & Listeners
-The project uses `@nestjs/event-emitter` to demonstrate event-driven communication.
-
-Example architecture:
+Upload a file:
 
 ```text
-Application Action
-       ↓
-   Emit Event
-       ↓
-   Event Listener
-       ↓
-  Side Effect
+POST /file-upload
 ```
 
-This allows related actions to be decoupled instead of putting every side effect directly inside the initiating service.
+Authentication is required.
+
+List uploaded files:
+
+```text
+GET /file-upload
+```
+
+Delete a file:
+
+```text
+DELETE /file-upload/:id
+```
+
+Deletion is restricted to `ADMIN` users.
+
+The database stores metadata such as:
+
+- Original filename
+- MIME type
+- Size
+- Cloudinary URL
+- Cloudinary public ID
+- Optional description
+- Uploading user
+- Creation time
 
 ---
 
-### 13. Interceptors
-Interceptors are used to demonstrate cross-cutting request/response behavior.
+## Events and Listeners
 
-The project includes HTTP logging behavior such as:
+The project uses `@nestjs/event-emitter` for a simple event-driven flow around user registration.
+
+When a user registers:
+
+```text
+User registration
+      ↓
+Save user
+      ↓
+Emit "user.registered"
+      ↓
+UserRegisteredListener
+      ↓
+Log welcome message
+```
+
+The event contains:
+
+```text
+User ID
+Email
+Name
+Timestamp
+```
+
+The listener currently logs a welcome message. It can later be replaced or extended with actions such as email sending or other side effects.
+
+---
+
+## Interceptors
+
+A global `LoggingInterceptor` is registered in `main.ts`.
+
+It demonstrates how an interceptor can observe request/response execution and log information such as:
+
 - HTTP method
-- Request URL
-- Client IP
+- URL
+- User ID when available
 - User-Agent
-- Response status code
 - Request duration
-- Error-level logging for 5xx responses
-- Warning-level logging for 4xx responses
-
-Example log format:
-
-```text
-[RESPONSE] -> GET /posts - 200 - 15ms
-```
-
----
-
-### 14. Middleware
-A custom HTTP logging middleware captures request information before the request reaches the route handler and measures the response duration.
+- Response size
+- Error information
 
 Conceptually:
 
 ```text
-Incoming Request
-      ↓
-   Middleware
-      ↓
-   Controller
-      ↓
-    Service
-      ↓
-   Response
-      ↓
- Middleware logs result
+Request
+  ↓
+Interceptor
+  ↓
+Controller
+  ↓
+Service
+  ↓
+Response
+  ↓
+Interceptor logging
 ```
-
-This demonstrates where application-wide request preprocessing and logging can be placed.
 
 ---
 
-## 📁 Project Structure
+## Middleware
 
-The project is organized around NestJS modules and shared cross-cutting functionality.
+A custom `LoggerMiddleware` is applied to all routes.
+
+It logs request information including:
+
+- HTTP method
+- Original URL
+- Client IP
+- User-Agent
+
+It also measures the time between the incoming request and the response finishing.
+
+Conceptually:
+
+```text
+Incoming request
+      ↓
+LoggerMiddleware
+      ↓
+Route handler
+      ↓
+Service
+      ↓
+Response
+      ↓
+Middleware logs status + duration
+```
+
+---
+
+## Project Structure
 
 ```text
 src/
 ├── auth/
+│   ├── decorators/
+│   ├── dto/
+│   ├── entities/
 │   ├── guards/
-│   └── ...
+│   └── strategies/
 │
 ├── posts/
 │   ├── dto/
 │   ├── entities/
-│   └── ...
+│   ├── interfaces/
+│   └── pipes/
 │
 ├── file-upload/
-│   └── cloudinary/
+│   ├── cloudinary/
+│   ├── dto/
+│   └── entities/
 │
 ├── events/
 │   └── listeners/
 │
 ├── common/
+│   ├── dto/
+│   ├── interfaces/
 │   ├── interceptors/
 │   └── middleware/
 │
 ├── config/
-│
+├── hello/
+├── user/
+├── app.controller.ts
 ├── app.module.ts
+├── app.service.ts
 └── main.ts
 ```
 
-> The exact contents of some folders may evolve as additional NestJS concepts are added.
+---
+
+## Tech Stack
+
+| Technology | Usage |
+|---|---|
+| NestJS 12 | Backend framework |
+| TypeScript | Application language |
+| PostgreSQL | Relational database |
+| TypeORM | ORM and database access |
+| Passport | Authentication integration |
+| Passport JWT | JWT authentication strategy |
+| JWT | Access and refresh tokens |
+| bcrypt | Password hashing |
+| class-validator | Request validation |
+| class-transformer | DTO transformation |
+| @nestjs/config | Configuration |
+| @nestjs/throttler | Rate limiting |
+| @nestjs/cache-manager | Caching |
+| cache-manager | Cache implementation |
+| Multer | Multipart file handling |
+| Cloudinary | File storage |
+| streamifier | Buffer-to-stream conversion |
+| @nestjs/event-emitter | Events and listeners |
 
 ---
 
-## ⚙️ Getting Started
+## Getting Started
 
 ### Prerequisites
 
-Make sure the following are installed:
+Install the following:
 
 - Node.js
 - npm
 - PostgreSQL
 - Git
+- A Cloudinary account for the file-upload functionality
 
-### 1. Clone the repository
+### Clone the repository
 
 ```bash
 git clone https://github.com/abhishek-kr01/nestjs-backend.git
 cd nestjs-backend
 ```
 
-### 2. Install dependencies
+### Install dependencies
 
-With the current dependency setup:
+Because of the current NestJS 12 + throttler dependency range:
 
 ```bash
 npm install --legacy-peer-deps
 ```
 
-This is currently needed because `@nestjs/throttler@6.5.0` declares a peer dependency range that does not include NestJS 12.
+### Database
 
-### 3. Configure environment variables
+Create a PostgreSQL database named:
 
-Create a `.env` file in the project root:
-
-```env
-PORT=3000
-
-DB_HOST=localhost
-DB_PORT=5432
-DB_USERNAME=postgres
-DB_PASSWORD=your_password
-DB_DATABASE=nestjs-backend
-
-JWT_SECRET=your_jwt_secret
-
-CLOUDINARY_CLOUD_NAME=your_cloud_name
-CLOUDINARY_API_KEY=your_api_key
-CLOUDINARY_API_SECRET=your_api_secret
+```text
+nestjs-backend
 ```
 
-Use your own local database credentials and Cloudinary credentials.
+The current database connection is configured in:
 
-### 4. Start PostgreSQL
+```text
+src/app.module.ts
+```
 
-Make sure your PostgreSQL server is running and the configured database exists.
+Update the PostgreSQL username/password there to match your local setup.
 
-### 5. Start the application
+### Cloudinary
 
-Development mode:
+Cloudinary credentials are configured in:
+
+```text
+src/file-upload/cloudinary/cloudinary.provider.ts
+```
+
+Update the configuration values with your Cloudinary account credentials before using the file-upload endpoints.
+
+### Start the application
+
+Development:
 
 ```bash
 npm run start:dev
 ```
 
-Production build:
+Build:
 
 ```bash
 npm run build
+```
+
+Production start:
+
+```bash
 npm run start:prod
 ```
 
-The API will be available at:
+The application listens on port `3000` by default unless `PORT` is provided.
+
+---
+
+## Environment Configuration
+
+The project contains an `@nestjs/config` setup and an application config file:
 
 ```text
-http://localhost:3000
+src/config/app.config.ts
+```
+
+The current database, JWT, and Cloudinary settings are still configured directly in parts of the application code, so review those values before sharing or deploying the project.
+
+Never commit real credentials, secrets, or API keys to the repository.
+
+---
+
+## Available Scripts
+
+```bash
+npm run start:dev     # start development server
+npm run build         # build the application
+npm run start         # start application
+npm run start:prod    # run compiled application
+npm run lint          # run oxlint
+npm test              # run unit tests
+npm run test:watch    # run tests in watch mode
+npm run test:cov      # run tests with coverage
+npm run test:e2e      # run end-to-end tests
+npm run format        # format source files
 ```
 
 ---
 
-## 🧪 Development Workflow
+## Development Flow
 
-This repository is intentionally built incrementally.
-
-A typical workflow is:
+The project was built incrementally so that each NestJS concept could be added to the same application.
 
 ```text
-Implement a feature
+NestJS basics
       ↓
-Run TypeScript compilation
-      ↓
-Start NestJS application
-      ↓
-Test endpoints
-      ↓
-Verify database / logs / events
-      ↓
-Commit changes
-      ↓
-Push to GitHub
-```
-
-This keeps each backend concept isolated enough to understand while still showing how the pieces work together in a single NestJS codebase.
-
----
-
-## 🔐 Security Notes
-
-This project is primarily a hands-on learning/reference codebase. Before using similar patterns in production, consider adding or reviewing:
-
-- Secrets management
-- Production database migrations
-- Proper database schema/version management
-- Strong JWT secret management
-- CORS policy
-- Helmet/security headers
-- Request size limits
-- File type and file size validation
-- Production-grade cache storage such as Redis
-- Centralized error handling
-- Structured logging
-- Comprehensive automated tests
-
----
-
-## 🚧 Current Scope
-
-Completed concepts currently include:
-
-```text
-✅ NestJS project structure
-✅ Modules, Controllers & Services
-✅ Environment Configuration
-✅ RESTful CRUD
-✅ DTOs, Pipes & Validation
-✅ PostgreSQL & TypeORM
-✅ JWT Authentication
-✅ bcrypt Password Hashing
-✅ JWT Strategy
-✅ Authentication Guards
-✅ RBAC
-✅ Rate Limiting
-✅ In-memory Caching
-✅ Pagination & Filtering
-✅ File Uploads with Cloudinary
-✅ Events & Listeners
-✅ Interceptors
-✅ Middleware
-```
-
-The codebase can be extended further with additional NestJS patterns and production-oriented backend features.
-
----
-
-## 🎯 Purpose
-
-The goal of this repository is to provide a practical NestJS backend codebase where concepts are learned by implementing them rather than only reading about them.
-
-It serves as:
-- A hands-on NestJS reference
-- A place to experiment with backend architecture
-- A progressively built REST API
-- A practical example of integrating common backend concerns
-- A reusable foundation for future NestJS projects
-
----
-
-## 📚 Learning Approach
-
-Instead of keeping each concept as an isolated snippet, this repository builds the features progressively:
-
-```text
-NestJS Fundamentals
-        ↓
 REST APIs
-        ↓
-Validation
-        ↓
-Database
-        ↓
-Authentication
-        ↓
-Authorization
-        ↓
-Security
-        ↓
+      ↓
+DTOs + Validation
+      ↓
+PostgreSQL + TypeORM
+      ↓
+JWT Authentication
+      ↓
+RBAC + Guards
+      ↓
+Rate Limiting
+      ↓
 Caching
-        ↓
-File Handling
-        ↓
-Events
-        ↓
+      ↓
+Pagination + Filtering
+      ↓
+File Uploads
+      ↓
+Events + Listeners
+      ↓
 Interceptors
-        ↓
+      ↓
 Middleware
 ```
 
-The result is a backend codebase that demonstrates how individual NestJS features fit together inside a real application structure.
+Each feature was implemented and tested during development before moving to the next part.
 
 ---
 
-## 👨‍💻 Author
+## Notes
+
+This repository is primarily a practical learning and reference codebase.
+
+Some parts of the implementation are intentionally simple so the underlying NestJS concept remains easy to follow. Before using the same setup in a production application, areas such as secret management, database migrations, file validation, error handling, testing, and production cache infrastructure should be reviewed separately.
+
+---
+
+## Author
 
 **Abhishek Kumar**
 
 GitHub: [abhishek-kr01](https://github.com/abhishek-kr01)
+
+Repository: [nestjs-backend](https://github.com/abhishek-kr01/nestjs-backend)
