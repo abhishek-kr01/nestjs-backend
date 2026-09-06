@@ -7,21 +7,23 @@ import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { RolesGuard } from './guards/roles-guard';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { EventsModule } from '../events/events.module';
 
 @Module({
   imports: [
-      // this will make the post repository available for injection
-      // available in the current scope
-      TypeOrmModule.forFeature([User]),
+    // this will make the post repository available for injection
+    // available in the current scope
+    TypeOrmModule.forFeature([User]),
 
-      // Passport module
-      PassportModule,
+    // Passport module
+    PassportModule,
 
-      // configure JWT
-      JwtModule.register({})
-    ],
+    // configure JWT
+    JwtModule.register({}),
+    EventsModule,
+  ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy, RolesGuard],
-  exports: [AuthService, RolesGuard]
+  exports: [AuthService, RolesGuard],
 })
 export class AuthModule {}

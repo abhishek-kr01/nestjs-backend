@@ -1,4 +1,8 @@
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User, UserRole } from './entities/user.entity';
 import { Repository } from 'typeorm';
@@ -6,162 +10,177 @@ import { RegisterDto } from './dto/register.dto';
 import * as bcrypt from 'bcrypt';
 import { LoginDto } from './dto/login.dto';
 import { JwtService } from '@nestjs/jwt';
+import { UserEventsService } from '../events/user-enents.service';
 
 @Injectable()
 export class AuthService {
-    constructor(
-        @InjectRepository(User)
-        private userRepository: Repository<User>,
-        private jwtService: JwtService
-    ){}
+  constructor(
+    @InjectRepository(User)
+    private userRepository: Repository<User>,
+    private jwtService: JwtService,
+    private readonly userEventService: UserEventsService,
+  ) {}
 
-    async register(registerDto: RegisterDto){
-        const existingUser = await this.userRepository.findOne({
-            where: {email: registerDto.email}
-        })
+  async register(registerDto: RegisterDto) {
+    const existingUser = await this.userRepository.findOne({
+      where: { email: registerDto.email },
+    });
 
-        if(existingUser){
-            throw new ConflictException('Email aready in use! Please try with a diff email')
-        }
-
-        const hashedPassword = await this.hashPassword(registerDto.password);
-
-        const newlyCreatedUser = this.userRepository.create({
-            email: registerDto.email,
-            name: registerDto.name,
-            password: hashedPassword,
-            role: UserRole.USER
-        })
-
-        const savedUser = await this.userRepository.save(newlyCreatedUser);
-
-        const {password, ...result} = savedUser;
-        return {
-            user: result,
-            message: 'Registration successfully! Please login to continue'
-        }
+    if (existingUser) {
+      throw new ConflictException(
+        'Email aready in use! Please try with a diff email',
+      );
     }
 
-    async createAdmin(registerDto: RegisterDto){
-        const existingUser = await this.userRepository.findOne({
-            where: {email: registerDto.email}
-        })
+    const hashedPassword = await this.hashPassword(registerDto.password);
 
-        if(existingUser){
-            throw new ConflictException('Email aready in use! Please try with a diff email')
-        }
+    const newlyCreatedUser = this.userRepository.create({
+      email: registerDto.email,
+      name: registerDto.name,
+      password: hashedPassword,
+      role: UserRole.USER,
+    });
 
-        const hashedPassword = await this.hashPassword(registerDto.password);
+    const savedUser = await this.userRepository.save(newlyCreatedUser);
 
-        const newlyCreatedUser = this.userRepository.create({
-            email: registerDto.email,
-            name: registerDto.name,
-            password: hashedPassword,
-            role: UserRole.ADMIN
-        })
+    // Emit the user registered envent
+    this.userEventService.emitUserRegistered(newlyCreatedUser);
 
-        const savedUser = await this.userRepository.save(newlyCreatedUser);
+    const { password, ...result } = savedUser;
+    return {
+      user: result,
+      message: 'Registration successfully! Please login to continue',
+    };
+  }
 
-        const {password, ...result} = savedUser;
-        return {
-            user: result,
-            message: 'Admin User created successfully! Please login to continue'
-        }
+  async createAdmin(registerDto: RegisterDto) {
+    const existingUser = await this.userRepository.findOne({
+      where: { email: registerDto.email },
+    });
+
+    if (existingUser) {
+      throw new ConflictException(
+        'Email aready in use! Please try with a diff email',
+      );
     }
 
-    async login(loginDto: LoginDto){
-        const user = await this.userRepository.findOne({
-            where: {email: loginDto.email}
-        })
+    const hashedPassword = await this.hashPassword(registerDto.password);
 
-        if(!user || !(await this.verifyPassword(loginDto.password, user.password))){
-            throw new UnauthorizedException('Invalid credentials or account not exists');
-        }
+    const newlyCreatedUser = this.userRepository.create({
+      email: registerDto.email,
+      name: registerDto.name,
+      password: hashedPassword,
+      role: UserRole.ADMIN,
+    });
 
-        // generate the tokens
-        const tokens = this.generateTokens(user)
-        const {password, ...result} = user;
-        return {
-            user: result,
-            ...tokens
-        }
+    const savedUser = await this.userRepository.save(newlyCreatedUser);
+
+    const { password, ...result } = savedUser;
+    return {
+      user: result,
+      message: 'Admin User created successfully! Please login to continue',
+    };
+  }
+
+  async login(loginDto: LoginDto) {
+    const user = await this.userRepository.findOne({
+      where: { email: loginDto.email },
+    });
+
+    if (
+      !user ||
+      !(await this.verifyPassword(loginDto.password, user.password))
+    ) {
+      throw new UnauthorizedException(
+        'Invalid credentials or account not exists',
+      );
     }
 
-    async refreshToken(refreshtoken: string){
-        try {
-            const payload = this.jwtService.verify(refreshtoken, {
-                secret: 'refresh_secret'//keep it in env
-            })
+    // generate the tokens
+    const tokens = this.generateTokens(user);
+    const { password, ...result } = user;
+    return {
+      user: result,
+      ...tokens,
+    };
+  }
 
-            const user = await this.userRepository.findOne({
-                where: {id: payload.sub}
-            })
+  async refreshToken(refreshtoken: string) {
+    try {
+      const payload = this.jwtService.verify(refreshtoken, {
+        secret: 'refresh_secret', //keep it in env
+      });
 
-            if(!user){
-                throw new UnauthorizedException('Invalid token')
-            }
+      const user = await this.userRepository.findOne({
+        where: { id: payload.sub },
+      });
 
-            const accessToken = this.generateAccessToken(user);
+      if (!user) {
+        throw new UnauthorizedException('Invalid token');
+      }
 
-            return {accessToken}
+      const accessToken = this.generateAccessToken(user);
 
-        } catch (e) {
-            throw new UnauthorizedException('Invalid token')
-        }
+      return { accessToken };
+    } catch (e) {
+      throw new UnauthorizedException('Invalid token');
+    }
+  }
+
+  // Find the current user by ID
+  async getUserById(userId: number) {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found!');
     }
 
-    // Find the current user by ID
-    async getUserById(userId: number){
-        const user = await this.userRepository.findOne({
-            where: {id: userId}
-        })
+    const { password, ...result } = user;
 
-        if(!user){
-            throw new UnauthorizedException('User not found!');
-        }
+    return result;
+  }
 
-        const {password, ...result} = user;
+  private async hashPassword(password: string): Promise<string> {
+    return bcrypt.hash(password, 10);
+  }
 
-        return result;
-    }
+  private async verifyPassword(
+    plainPassword: string,
+    hashedPassword: string,
+  ): Promise<boolean> {
+    return bcrypt.compare(plainPassword, hashedPassword);
+  }
 
-    private async hashPassword(password: string): Promise<string> {
-        return bcrypt.hash(password, 10);
-    }
+  private generateTokens(user: User) {
+    return {
+      accessToken: this.generateAccessToken(user),
+      refreshToken: this.generateRefreshToken(user),
+    };
+  }
 
-    private async verifyPassword(plainPassword: string, hashedPassword: string): Promise<boolean> {
-        return  bcrypt.compare(plainPassword, hashedPassword);
-    }
+  private generateAccessToken(user: User): string {
+    const payload = {
+      email: user.email,
+      sub: user.id,
+      role: user.role,
+    };
 
-    private generateTokens(user: User) {
-        return {
-            accessToken: this.generateAccessToken(user),
-            refreshToken: this.generateRefreshToken(user)
-        }
-    }
+    return this.jwtService.sign(payload, {
+      secret: 'access_secret', // keep this inside env
+      expiresIn: '15m',
+    });
+  }
 
-    private generateAccessToken(user: User): string {
-        const payload = {
-            email: user.email,
-            sub: user.id,
-            role: user.role,
-        }
+  private generateRefreshToken(user: User): string {
+    const payload = {
+      sub: user.id,
+    };
 
-        return this.jwtService.sign(payload, {
-            secret: 'access_secret', // keep this inside env
-            expiresIn: '15m'
-        })
-    }
-
-    private generateRefreshToken(user: User): string {
-        const payload = {
-            sub: user.id,
-        }
-
-        return this.jwtService.sign(payload, {
-            secret: 'refresh_secret', // keep this inside env
-            expiresIn: '7d'
-        })
-    }
-    
+    return this.jwtService.sign(payload, {
+      secret: 'refresh_secret', // keep this inside env
+      expiresIn: '7d',
+    });
+  }
 }
