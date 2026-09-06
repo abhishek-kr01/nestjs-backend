@@ -13,6 +13,8 @@ import { AuthModule } from './auth/auth.module';
 import { User } from './auth/entities/user.entity';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { CacheModule } from '@nestjs/cache-manager';
+import { FileUploadModule } from './file-upload/file-upload.module';
+import { File } from './file-upload/entities/file.entity';
 
 @Module({
   imports: [
@@ -26,6 +28,10 @@ import { CacheModule } from '@nestjs/cache-manager';
     HelloModule,
     UserModule,
     PostsModule,
+
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
 
     ThrottlerModule.forRoot({
       throttlers: [
@@ -49,10 +55,11 @@ import { CacheModule } from '@nestjs/cache-manager';
       username: 'postgres',
       password: 'postgres123', //keep it in env
       database: 'nestjs-backend',
-      entities: [Post, User], // array of entites that we want to register
+      entities: [Post, User, File], // array of entites that we want to register
       synchronize: true, // dev mode
     }),
     AuthModule,
+    FileUploadModule,
   ],
   controllers: [AppController],
   providers: [AppService],
